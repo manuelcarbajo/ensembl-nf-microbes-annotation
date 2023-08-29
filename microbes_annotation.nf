@@ -4,8 +4,8 @@
  * Define the default parameters
  */
 
-params.csv_file = "$baseDir/data/genomes_test.csv"
-params.output_path = "$baseDir/data/genome_annotations_new"
+params.csv_file = "$baseDir/data/genomes_list.csv"
+params.output_path = "$baseDir/data/genome_annotations"
 params.ncbi_config = "$baseDir/config/ncbi_db.conf"
 
 csv_file_ch = Channel.of(params.csv_file)
@@ -64,7 +64,7 @@ process get_UniProt_data {
 workflow {
     get_NCBI_taxonomy_data(csv_file_ch, output_path_ch, ncbi_conf_ch)
     
-    genome_paths_ch = Channel.fromPath( "data/genome_annotations_new/*/tax_ranks.txt" )
+    genome_paths_ch = Channel.fromPath( "data/genome_annotations/*/tax_ranks.txt" )
  
     genome_paths_ch.view().each {
         path ->
