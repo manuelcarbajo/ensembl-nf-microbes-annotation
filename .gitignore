@@ -1,0 +1,5 @@
+
+.data/genome_annotations/*
+.data/genomes_list.csv
+.config/ncbi_db.conf
+.work/*

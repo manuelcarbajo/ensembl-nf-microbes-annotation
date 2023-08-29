@@ -3,8 +3,11 @@ import sys
 import os
 import mysql.connector
 from urllib.parse import urlparse, parse_qs
+from pathlib import Path
 
 def read_csv_file(csv_file, output_path, ncbi_config):
+    genome_paths = []
+    current_directory = os.getcwd()
     try:
         with open(csv_file, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter='\t')
@@ -29,12 +32,13 @@ def read_csv_file(csv_file, output_path, ncbi_config):
                             }
 
             species_dict = execute_mysql_query(ncbi_config, species_dict)
-            print(species_dict)        
+            for gca in species_dict:
+                if species_dict[gca]["level_1_tax"]:
+                    genome_paths.append(species_dict[gca]["genome_dir"])
     except FileNotFoundError:
         print(f"Error: File '{csv_file}' or '{output_path}' not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
-
     
     # write the tax rank data to the corresponding folder of each species
     try:
@@ -52,27 +56,26 @@ def read_csv_file(csv_file, output_path, ncbi_config):
     
     except Exception as e:
         print(f"An error occurred while storing the taxonomic rank data: {e}")
+    print("--------------")
+    return genome_paths
 
 def read_config(conf_file_path):
     # Read configuration file and extract the URL
     with open(conf_file_path, 'r') as config_file:
         url = config_file.readline().strip()
-
     # Parse the URL to get the connection parameters
     parsed_url = urlparse(url)
     params = parse_qs(parsed_url.query)
-
     # Extract the connection parameters
     host = parsed_url.hostname
     user = parsed_url.username
     password = parsed_url.password
     database = parsed_url.path[1:]  # Remove the leading '/'
     port = int(parsed_url.port)
+
     return host, user, password, database, port
 
 # Rest of the code remains the same as before
-
-
 
 def execute_mysql_query(config_file_path, species_dict):
     # Read MySQL connection parameters from the configuration file
@@ -87,7 +90,6 @@ def execute_mysql_query(config_file_path, species_dict):
             database=database,
             port=port
         )
-        print("Connection established successfully.")
     except mysql.connector.Error as err:
         print(f"Error connecting to MySQL: {err}")
         return
@@ -108,8 +110,9 @@ def execute_mysql_query(config_file_path, species_dict):
                     species_dict[gca][current_tax] = result[0]
                     species_dict[gca][current_name] = result[1]
         except mysql.connector.Error as err:
-            print(f"Error executing query: {err}")
-     
+            print(f"connector error executing query: {err}")
+        except Exception as err:
+            print(f"GEneric error executing query: {err}")
     
     # Close the cursor and connection
     if 'cursor' in locals() and cursor is not None:
