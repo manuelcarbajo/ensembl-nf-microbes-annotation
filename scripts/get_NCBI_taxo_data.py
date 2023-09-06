@@ -6,35 +6,33 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 
 def read_csv_file(csv_file, output_path, ncbi_config):
+    IND_ORG_NAME = 0
+    IND_TAX = 1
+    IND_GCA = 2
+    IND_GENOM_NAME = 3
+
     genome_paths = []
     current_directory = os.getcwd()
+    folderName = os.getcwd() + '/genom_anno_dev'
     try:
         with open(csv_file, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter='\t')
             species_dict = {}
             for row in reader:
                 if row and not row[0].startswith('#'):
-                    level_0_name = row[0]
-                    level_0_tax = row[1]
-                    level_0_gca = row[2]
-                    if '.' in level_0_gca:
-                        level_0_gca = level_0_gca.split('.')[0]
-                        
-                    level_0_name_gca = level_0_name + "_" + level_0_gca
-                    level_0_dir = output_path + "/" + level_0_name_gca
-                    if not os.path.exists(level_0_dir):
-                        # Create the directory
-                        os.makedirs(level_0_dir)
-                    species_dict[level_0_gca] = {
+                    level_0_name = row[IND_ORG_NAME]
+                    level_0_tax = row[IND_TAX]
+                    gca = row[IND_GCA]
+                    genome_name = row[IND_GENOM_NAME]
+                    species_dict[gca] = {
                             "level_0_name": level_0_name,
                             "level_0_tax": level_0_tax,
-                            "genome_dir": level_0_dir,
+                            "genome_name": genome_name,
                             }
-
             species_dict = execute_mysql_query(ncbi_config, species_dict)
-            for gca in species_dict:
-                if species_dict[gca]["level_1_tax"]:
-                    genome_paths.append(species_dict[gca]["genome_dir"])
+            
+            if not os.path.exists(folderName):
+                os.makedirs(folderName, exist_ok=True)
     except FileNotFoundError:
         print(f"Error: File '{csv_file}' or '{output_path}' not found.")
     except Exception as e:
@@ -43,8 +41,9 @@ def read_csv_file(csv_file, output_path, ncbi_config):
     # write the tax rank data to the corresponding folder of each species
     try:
         for gca in species_dict:
-            genome_dir = species_dict[gca]["genome_dir"]
-            tax_rank_file = os.path.join(genome_dir,"tax_ranks.txt")
+            genome_name = species_dict[gca]['genome_name']
+            tax_rank_file = folderName + '/' +  genome_name + "/tax_ranks.txt"
+            os.makedirs(os.path.dirname(tax_rank_file), exist_ok=True)
             try:
                 with open(tax_rank_file, "w") as output_file:
                     # Write the data associated with the key (gca) to the file
@@ -60,22 +59,24 @@ def read_csv_file(csv_file, output_path, ncbi_config):
     return genome_paths
 
 def read_config(conf_file_path):
+    
     # Read configuration file and extract the URL
     with open(conf_file_path, 'r') as config_file:
         url = config_file.readline().strip()
+    
     # Parse the URL to get the connection parameters
     parsed_url = urlparse(url)
     params = parse_qs(parsed_url.query)
+    
     # Extract the connection parameters
     host = parsed_url.hostname
     user = parsed_url.username
     password = parsed_url.password
-    database = parsed_url.path[1:]  # Remove the leading '/'
+    database = parsed_url.path[1:]  
     port = int(parsed_url.port)
 
     return host, user, password, database, port
 
-# Rest of the code remains the same as before
 
 def execute_mysql_query(config_file_path, species_dict):
     # Read MySQL connection parameters from the configuration file
@@ -123,7 +124,7 @@ def execute_mysql_query(config_file_path, species_dict):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Please provide the csv file path and the output_path as arguments.")
+        print("Please provide the csv file path, the ncbi config file and the output_path as arguments.")
     else:
         csv_file = sys.argv[1]
         output_path = sys.argv[2]

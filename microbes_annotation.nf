@@ -5,7 +5,7 @@
  */
 
 params.csv_file = "$baseDir/data/genomes_list.csv"
-params.output_path = "$baseDir/data/genome_annotations"
+params.output_path = "$baseDir/genomes_output"
 params.ncbi_config = "$baseDir/config/ncbi_db.conf"
 
 csv_file_ch = Channel.of(params.csv_file)
@@ -23,21 +23,18 @@ log.info """\
     """
     .stripIndent()
 
-// Define the process 'get_NCBI_taxonomy_data'
 process get_NCBI_taxonomy_data {
     debug true
+    publishDir "${params.output_path}", mode: 'copy'
 
-    // Define the input variables
     input:
     path csv_file 
     path output_path 
     path ncbi_conf
 
-    // Define the output variable 'stdout'
     output:
-    stdout
-
-    // Script block to execute the process
+    path "genom_anno_dev/*", emit: genome_names
+    
     script:
     """
     mkdir -p ${output_path}
@@ -47,28 +44,24 @@ process get_NCBI_taxonomy_data {
 
 process get_UniProt_data {
     debug true
+    publishDir "${params.output_path}/genom_anno_dev", mode: 'copy'
 
     input:
-    path genome_path
+    path genome_names
 
     output:
-    stdout
+    path "${genome_names}/*_uniprot.fa", emit: uniprot_fa
 
     script:
     """
-    python3 ${baseDir}/scripts/get_UniProt_data.py ${genome_path}
+    python3 ${baseDir}/scripts/get_UniProt_data.py ${genome_names}
     """
 }
 
-// Main workflow
 workflow {
-    get_NCBI_taxonomy_data(csv_file_ch, output_path_ch, ncbi_conf_ch)
-    
-    genome_paths_ch = Channel.fromPath( "data/genome_annotations/*/tax_ranks.txt" )
- 
-    genome_paths_ch.view().each {
-        path ->
-        get_UniProt_data(path)
-    }
+    def ncbi_ch = get_NCBI_taxonomy_data(csv_file_ch, output_path_ch, ncbi_conf_ch)
+
+    get_UniProt_data( get_NCBI_taxonomy_data.out.genome_names.flatten() )
 }
+
 
