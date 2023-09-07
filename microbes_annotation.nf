@@ -50,11 +50,12 @@ process get_UniProt_data {
     path genome_names
 
     output:
-    path "${genome_names}/*_uniprot.fa", emit: uniprot_fa
+    path "${genome_names}/*_uniprot_proteins.fa", emit: uniprot_fa
+    path "${genome_names}/*_uniprot_proteins.fa.fai", emit: uniprot_fai
 
     script:
     """
-    python3 ${baseDir}/scripts/get_UniProt_data.py ${genome_names}
+    python3 ${baseDir}/scripts/get_UniProt_data.py ${genome_names} ${baseDir}
     """
 }
 
