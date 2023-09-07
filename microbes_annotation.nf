@@ -38,7 +38,7 @@ process get_NCBI_taxonomy_data {
     script:
     """
     mkdir -p ${output_path}
-    python3 ${baseDir}/scripts/get_NCBI_taxo_data.py ${baseDir}/data/${csv_file} ${baseDir}/data/${output_path} ${baseDir}/config/${ncbi_conf}
+    python3 ${baseDir}/scripts/ncbi_taxo_data.py ${baseDir}/data/${csv_file} ${baseDir}/data/${output_path} ${baseDir}/config/${ncbi_conf}
     """ 
 }
 
@@ -52,10 +52,25 @@ process get_UniProt_data {
     output:
     path "${genome_names}/*_uniprot_proteins.fa", emit: uniprot_fa
     path "${genome_names}/*_uniprot_proteins.fa.fai", emit: uniprot_fai
+    
+    script:
+    """
+    python3 ${baseDir}/scripts/uniprot_data.py ${genome_names} ${baseDir}
+    """
+}
+
+process get_OrthoDB_protset {
+    debug true
+
+    input:
+    path genome_names
+
+    output:
+    stdout
 
     script:
     """
-    python3 ${baseDir}/scripts/get_UniProt_data.py ${genome_names} ${baseDir}
+    python3 ${baseDir}/scripts/orthoDB_protset.py ${genome_names} 
     """
 }
 
