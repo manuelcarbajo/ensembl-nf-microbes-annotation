@@ -48,29 +48,34 @@ process get_UniProt_data {
 
     input:
     path genome_names
+    
 
     output:
     path "${genome_names}/*_uniprot_proteins.fa", emit: uniprot_fa
     path "${genome_names}/*_uniprot_proteins.fa.fai", emit: uniprot_fai
+    path genome_names, emit:genome_dir
     
     script:
     """
-    python3 ${baseDir}/scripts/uniprot_data.py ${genome_names} ${baseDir}
+    python3 ${baseDir}/scripts/uniprot_data.py ${genome_names} ${baseDir} "${params.output_path}/genom_anno_dev"
     """
 }
 
 process get_OrthoDB_protset {
     debug true
+    publishDir "${params.output_path}/genom_anno_dev/${genome_dir}", mode: 'copy'
 
     input:
-    path genome_names
-
+    path genome_dir
+    path uniprot_fa
+    path uniprot_fai
+ 
     output:
     stdout
 
     script:
     """
-    python3 ${baseDir}/scripts/orthoDB_protset.py ${genome_names} 
+    python3 ${baseDir}/scripts/orthoDB_protset.py ${genome_dir} ${uniprot_fa} ${uniprot_fai} ${baseDir}
     """
 }
 
@@ -78,6 +83,10 @@ workflow {
     def ncbi_ch = get_NCBI_taxonomy_data(csv_file_ch, output_path_ch, ncbi_conf_ch)
 
     get_UniProt_data( get_NCBI_taxonomy_data.out.genome_names.flatten() )
+    
+    get_OrthoDB_protset(get_UniProt_data.out.genome_dir, get_UniProt_data.out.uniprot_fa, get_UniProt_data.out.uniprot_fai)
+    
+
 }
 
 
