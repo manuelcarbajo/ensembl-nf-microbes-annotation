@@ -3,7 +3,7 @@ import ast
 import requests
 import os
 import subprocess
-
+import gzip
 
 def read_tax_rank(genome_name):
     tax_ranks = {}
@@ -15,27 +15,30 @@ def read_tax_rank(genome_name):
 
 
 def query_UniProt(tax_ranks, baseDir):
+    data_found = False
     for l in range(2):
         current_name = "level_" + str(l) + "_name"
         current_tax = "level_" + str(l) + "_tax"
-        if tax_ranks[current_name]:
+        if tax_ranks[current_name] and not data_found:
             g_name = tax_ranks[current_name]
             genome_name = process_string(g_name)
             genome_tax = tax_ranks[current_tax]
             root_path_prefix = tax_ranks['genome_name'] + "/" + genome_name
             uniprot_fasta_file = root_path_prefix + "_uniprot.fa"
-            url = "https://rest.uniprot.org/uniprotkb/stream?format=fasta&query=taxonomy_id:" + str(genome_tax) + "&existence:1&existence:2format=json"
+            url = "https://rest.uniprot.org/uniprotkb/stream?compressed=false&format=fasta&query=%28%28taxonomy_id%3A" + str(genome_tax) + "%29+AND+%28%28existence%3A1%29+OR+%28existence%3A2%29%29%29"
             try:
                 response = requests.get(url)
+                
                 if response.status_code == 200:
                     print("SUCCESS at level " + str(l) + ": " + uniprot_fasta_file)
                     with open(uniprot_fasta_file,"w") as gf:
                         gf.write(response.text)
+                    data_found = True
                     index_fasta(root_path_prefix, baseDir)
-                    break
             except Exception as err:
                 print("Error querying UniProt: " + str(err) + " at level " + str(l) + " : " + genome_name + " " + str(genome_tax) + " dir: " + uniprot_fasta_file )
-
+        elif data_found:
+            break
 
 def process_string(input_string):
     # Remove apostrophes
