@@ -4,6 +4,8 @@ import os
 import mysql.connector
 from urllib.parse import urlparse, parse_qs
 from pathlib import Path
+from datetime import datetime
+import my_process as mp
 
 def read_csv_file(csv_file, output_path, ncbi_config):
     IND_ORG_NAME = 0
@@ -36,7 +38,7 @@ def read_csv_file(csv_file, output_path, ncbi_config):
     except FileNotFoundError:
         print(f"Error: File '{csv_file}' or '{output_path}' not found.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred when trying to connect to ncbi: {e}")
     
     # write the tax rank data to the corresponding folder of each species
     try:
@@ -58,29 +60,9 @@ def read_csv_file(csv_file, output_path, ncbi_config):
     print("--------------")
     return genome_paths
 
-def read_config(conf_file_path):
-    
-    # Read configuration file and extract the URL
-    with open(conf_file_path, 'r') as config_file:
-        url = config_file.readline().strip()
-    
-    # Parse the URL to get the connection parameters
-    parsed_url = urlparse(url)
-    params = parse_qs(parsed_url.query)
-    
-    # Extract the connection parameters
-    host = parsed_url.hostname
-    user = parsed_url.username
-    password = parsed_url.password
-    database = parsed_url.path[1:]  
-    port = int(parsed_url.port)
-
-    return host, user, password, database, port
-
-
 def execute_mysql_query(config_file_path, species_dict):
     # Read MySQL connection parameters from the configuration file
-    host, user, password, database, port = read_config(config_file_path)
+    host, user, password, database, port = mp.read_config(config_file_path)
 
     # Establish MySQL connection
     try:
@@ -100,16 +82,17 @@ def execute_mysql_query(config_file_path, species_dict):
         try:
             query_tax = species_dict[gca]["level_0_tax"]
             for query_level in ["level_0","level_1","level_2","level_3"]:
-                query = "SELECT nm.taxon_id, nm.name, parent_id from ncbi_taxa_name nm join ncbi_taxa_node nd using(taxon_id) where name_class='scientific name' and taxon_id=" + str(query_tax) + ";" 
+                query = "SELECT nm.taxon_id, nm.name, parent_id, nd.rank from ncbi_taxa_name nm join ncbi_taxa_node nd using(taxon_id) where name_class='scientific name' and taxon_id=" + str(query_tax) + ";" 
                 cursor = connection.cursor()
                 cursor.execute(query)
                 result = cursor.fetchall()[0]
                 query_tax = result[2]
-                if query_level != "level_0":
-                    current_tax = query_level + "_tax"
-                    current_name = query_level + "_name"
-                    species_dict[gca][current_tax] = result[0]
-                    species_dict[gca][current_name] = result[1]
+                current_tax = query_level + "_tax"
+                current_name = query_level + "_name"
+                current_rank = query_level + "_rank"
+                species_dict[gca][current_tax] = result[0]
+                species_dict[gca][current_name] = result[1]
+                species_dict[gca][current_rank] = result[3]
         except mysql.connector.Error as err:
             print(f"connector error executing query: {err}")
         except Exception as err:
@@ -130,4 +113,5 @@ if __name__ == "__main__":
         output_path = sys.argv[2]
         ncbi_config = sys.argv[3]
         read_csv_file(csv_file, output_path, ncbi_config)
-
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("** endtime NCBI: " + str(now))

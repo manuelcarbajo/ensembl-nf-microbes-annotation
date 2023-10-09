@@ -5,6 +5,7 @@ import sys
 import subprocess
 import json
 import time
+from datetime import datetime
 
 # Main input variables
 TAXID_CLADE = sys.argv[1]
@@ -12,7 +13,7 @@ CWD = os.path.realpath(os.getcwd())
 PERL_SCRIPTS_DIR = sys.argv[2] + "/bin"
 
 # IMPORTANT URL - Which could be changed in a future OrthoDB update
-ORTHODB_FILE_URL = "https://data.orthodb.org/download"
+ORTHODB_FILE_URL = "https://data.orthodb.org/download/"
 
 def is_int(value):
     try:
@@ -22,29 +23,36 @@ def is_int(value):
         return False
 
 
-print("TAXID_CLADE: " + TAXID_CLADE + " PERL_SCRIPTS_DIR: " + PERL_SCRIPTS_DIR)
+print("--------------------\nDOWLOADING ORTHODB WITH PYTHON SCRIPT for TAXID_CLADE: " + TAXID_CLADE + " PERL_SCRIPTS_DIR: " + PERL_SCRIPTS_DIR)
 # Get the latest information related to the current version set of *.tab.gz files hosted on OrthoDB
-with subprocess.Popen(["wget", "-q", ORTHODB_FILE_URL, "-O", "OrthoDB_Download.html"], stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
-    stdout, stderr = proc.communicate()
+cmd = ["wget", "-q", ORTHODB_FILE_URL, "-O", "OrthoDB_Download.html"]
+try:
+    # Run wget to download the file and capture stdout and stderr separately
+    completed_process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1)
+    # Check for any errors
+    if proc.returncode != 0:
+        print(f"Error occurred. wget stderr:\n{stderr.decode('utf-8')}")
+    else:
+        print(f"wget stdout:\n{stdout.decode('utf-8')}")
+except subprocess.TimeoutExpired:
+    print("wget took too long and was terminated.")
+
 
 with open("OrthoDB_Download.html", "r") as orthodb_download_file:
     orthodb_html = orthodb_download_file.read()
 
-# Find ODB_LEVEL2SPECIES, ODB_LEVELS, and ODB_VERSION
-odb_level2species_match = re.search(r'odb\d+v\d+_level2species\.tab\.gz', orthodb_html)
-ODB_LEVEL2SPECIES = odb_level2species_match.group() if odb_level2species_match else ""
-
-odb_levels_match = re.search(r'odb\d+v\d+_levels\.tab\.gz', orthodb_html)
-ODB_LEVELS = odb_levels_match.group() if odb_levels_match else ""
-
-odb_version_match = re.search(r'odb\d+v\d+', orthodb_html)
-ODB_VERSION = odb_version_match.group() if odb_version_match else ""
-
+    # Find ODB_LEVEL2SPECIES, ODB_LEVELS, and ODB_VERSION
+    odb_level2species_match = re.search(r'odb\d+v\d+_level2species\.tab\.gz', orthodb_html)
+    ODB_LEVEL2SPECIES = odb_level2species_match.group() if odb_level2species_match else ""
+    odb_levels_match = re.search(r'odb\d+v\d+_levels\.tab\.gz', orthodb_html)
+    ODB_LEVELS = odb_levels_match.group() if odb_levels_match else ""
+    odb_version_match = re.search(r'odb\d+v\d+', orthodb_html)
+    ODB_VERSION = odb_version_match.group() if odb_version_match else ""
 print(f"Using OrthoDB Version: {ODB_VERSION}\n ODB_LEVEL2SPECIES: {ODB_LEVEL2SPECIES} \n ODB_LEVELS: {ODB_LEVELS}\n")
 
 # Test for presence of non-fasta files from OrthoDB. Used to gain clade/species information.
 if not (os.path.isfile(os.path.join(CWD, ODB_LEVEL2SPECIES)) and os.path.isfile(os.path.join(CWD, ODB_LEVELS))):
-    print("## Downloading OrthoDB taxonomy to Ortho master files....")
+   ## Downloading OrthoDB taxonomy to Ortho master files...."
     for ORTHFILE in (ODB_LEVEL2SPECIES, ODB_LEVELS):
         response = requests.get(f"{ORTHODB_FILE_URL}/{ORTHFILE}", stream=True)
         if response.status_code == 200:
@@ -94,6 +102,9 @@ if is_int(TAXID_CLADE):
         uniprot_output = f"{CLADE_NAME}.comb.uniprot.tmp"
         with open(uniprot_output, "w") as uniprot_file:
             #tid_list_str = ",".join(CLADE_TID_LIST)
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print("**** getting uniprots " + str(now))
+            
             for tid in CLADE_TID_LIST:
                 response = requests.get(f"https://rest.uniprot.org/taxonomy/{tid}.tsv")
                 print(f"uniprot response 1: https://rest.uniprot.org/taxonomy/{tid}.tsv")
@@ -103,6 +114,8 @@ if is_int(TAXID_CLADE):
                     for line in lines[1:]:
                         if line[0].isdigit():
                             uniprot_file.write(line + '\n')
+                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print("**---- get uniprots end " + str(now))
 
         with open(f"{CLADE_NAME}.orthodb.uniprot.tsv", "w") as orthodb_uniprot_file:
             with open(uniprot_output, "r") as uniprot_file:
@@ -140,7 +153,9 @@ else:
         # Obtain taxon information from Uniprot
         uniprot_output = f"{CLADE_NAME}.comb.uniprot.tmp"
         with open(uniprot_output, "w") as uniprot_file:
-            #tid_list_str = ",".join(CLADE_TID_LIST)
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print("**** getting uniprots " +  str(now))
+            
             for tid in CLADE_TID_LIST:
                 response = requests.get(f"https://rest.uniprot.org/taxonomy/{tid}.tsv")
                 print(" uniprot response 2: " + str(response))
@@ -150,7 +165,8 @@ else:
                     for line in lines[1:]:
                         if line[0].isdigit():
                             uniprot_file.write(line + '\n')
-    
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print("**---- uniprots end " +  str(now))
         with open(f"{CLADE_NAME}.orthodb.uniprot.tsv", "w") as orthodb_uniprot_file:
             with open(uniprot_output, "r") as uniprot_file:
                 for line in uniprot_file:
@@ -192,6 +208,9 @@ if not CLADE_NAME:
     print(f"## See File: {uniprot_output}")
     sys.exit(1)
 
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+print("**** AFTER CHECKING CLADE NAME " +  str(now))
+
 # Report set of taxon IDs to screen
 LOG_CLUSTERS = os.path.join(CWD, f"{CLADE_NAME}_orthodb_download.cluster.log.txt")
 
@@ -227,6 +246,8 @@ try:
 except requests.exceptions.RequestException as e:
     print(f"Error downloading JSON data: {str(e)}")
 
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+print("**** AFTER DOWNLOADING CLUSTER JSON " +  str(now))
 
 # Set the output file name for combined clusters text file
 LINEAR_CLUSTERS = f"{CLADE_NAME}_orthoDB_clusters.linear.txt"
@@ -253,6 +274,9 @@ CLUSTER_COUNT = data['count']
 
 # Print the retrieved cluster count and clade name
 print(f"\n*** Retrieved a total of {CLUSTER_COUNT} clusters for {CLADE_NAME} ***\n")
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+print("**** AFTER PRINTING CLUSTER COUNT AND NAME " +  str(now))
+
 
 # Sleep for 3 seconds (optional)
 time.sleep(3)
@@ -268,35 +292,54 @@ if os.path.exists(ORIG_CLUSTERS_COMB):
 
 # Iterate through the cluster IDs
 with open(LINEAR_CLUSTERS, 'r') as linear_clusters_file:
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("**** START DOWNLOADING INDIVIDUAL CLUSTERS " +  str(now))
     for CLUSTER in linear_clusters_file:
         try:
             CLUSTER = CLUSTER.strip()
             SINGLE_CLUSTER = os.path.join(CWD, f"sub_{CLUSTER}.fa")
             clade_http_str = ", ".join(CLADE_TID_LIST)
-            wget_command = f"wget -qq 'https://v101.orthodb.org/fasta?query=level={TAXON_ID}&id={CLUSTER}&species={clade_http_str}' -O {SINGLE_CLUSTER}"
-            wget_script = os.path.join(CWD, f"OrthoDB_wget_{CLUSTER}.sh")
-
-            # Create a shell script with the wget command
-            with open(wget_script, 'w') as wget_script_file:
-                wget_script_file.write(wget_command)
+        
+            url = "https://v101.orthodb.org/fasta?query=level=" +str(TAXON_ID) + "&id=" + str(CLUSTER) + "&species=" + str(clade_http_str)
+            wget_command = ["wget", "-qq", url, "-O", SINGLE_CLUSTER] 
 
             # Log the cluster processing
             print(f"Processing OrthoDB cluster: {CLUSTER}")
             with open(LOG_CLUSTERS, 'a') as log_clusters_file:
-                log_clusters_file.write(f"Running --> {wget_script}\n{wget_command}")
-
-            # Run the wget script
-            subprocess.run(["sh", wget_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-
+                print(f"Running --> {wget_command}")
+                log_clusters_file.write(f"Running --> {wget_command}")
+            
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print("----  DOWNLOADING INDIVIDUAL CLUSTER " + CLUSTER + " " +  str(now))
+            
+            
+            try:
+                # Run wget to download the file and capture stdout and stderr separately
+                completed_process = subprocess.run(wget_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1.1)
+                # Check for any errors
+                if proc.returncode != 0:
+                    print(f"Error occurred downloading individual clusters. wget stderr:\n{stderr.decode('utf-8')}")
+                else:
+                    print(f"wget stdout:\n{stdout.decode('utf-8')}")
+            except subprocess.TimeoutExpired:
+                    print("individual clusters wget took too long and was terminated.")
+            
+            print("---- ---=-- CLUSTER downloaded")
             # Append the contents of the downloaded cluster to the combined file
             with open(SINGLE_CLUSTER, 'r') as single_cluster_file, open(ORIG_CLUSTERS_COMB, 'a') as combined_clusters_file:
                 combined_clusters_file.write(single_cluster_file.read())
-
+            
+            print("------  CLUSTER DOWNLOADED " +  str(now))
             # Remove the wget script and the downloaded cluster
-            os.remove(wget_script)
+            #os.remove(wget_script)
             os.remove(SINGLE_CLUSTER)
         except Exception as err:
             print("Error downloading " + CLUSTER + " with " + wget_command + ": " + str(err) )
+
+
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+print("**** AFTER DOWNLOADING INDIVIDUAL CLUSTERS " +  str(now))
+
 
 ## Process the Combined cluster DB fasta to sort out headers. Retaining unique orthoDB seqIDs, but removing...
 ## redundancy and adding a counter when sequences are not unique to single OrthoDB clusters.
@@ -325,6 +368,10 @@ os.rename(REHEADER_OUT, FINAL_ORTHO_FASTA)
 # Define file paths
 FINAL_ORTHO_FASTA = f"{CWD}/{BASENAME}_final.out.fa"
 
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+print("**** AFTER PROCESSING INDIVIDUAL CLUSTERS " +  str(now))
+
+
 # Create a samtools index file
 print(f"Creating samtools index of {FINAL_ORTHO_FASTA}")
 samtools_command = f"samtools faidx {FINAL_ORTHO_FASTA}"
@@ -347,6 +394,12 @@ print(f"Final Fasta Count: {final_fasta_count}")
 print("\nRenaming final output files:")
 rename_command = f"perl {PERL_SCRIPTS_DIR}/quick_rename.pl {BASENAME}_final.out. {CLADE_NAME}_orth{ODB_VERSION}_proteins. prefix"
 subprocess.run(rename_command, shell=True)
+
+
+
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+print("**** AFTER SAMTOOLS PROCESSING  " +  str(now))
+
 
 # Exit with a success status code (0)
 exit(0)

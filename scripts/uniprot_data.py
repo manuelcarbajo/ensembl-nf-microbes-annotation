@@ -1,27 +1,21 @@
 import sys
-import ast
 import requests
 import os
 import subprocess
 import gzip
-
-def read_tax_rank(genome_name):
-    tax_ranks = {}
-    tax_rank_file = genome_name + "/tax_ranks.txt"
-    with open(tax_rank_file, 'r') as file:
-        content = file.read()
-        tax_rank = ast.literal_eval(content)
-    return tax_rank
+from datetime import datetime
+import my_process as mp
 
 
 def query_UniProt(tax_ranks, baseDir):
     data_found = False
-    for l in range(2):
+    for l in range(4):
+        current_rank = "level_" + str(l) + "_rank"
         current_name = "level_" + str(l) + "_name"
         current_tax = "level_" + str(l) + "_tax"
         if tax_ranks[current_name] and not data_found:
             g_name = tax_ranks[current_name]
-            genome_name = process_string(g_name)
+            genome_name = mp.process_string(g_name)
             genome_tax = tax_ranks[current_tax]
             root_path_prefix = tax_ranks['genome_name'] + "/" + genome_name
             uniprot_fasta_file = root_path_prefix + "_uniprot.fa"
@@ -39,17 +33,6 @@ def query_UniProt(tax_ranks, baseDir):
                 print("Error querying UniProt: " + str(err) + " at level " + str(l) + " : " + genome_name + " " + str(genome_tax) + " dir: " + uniprot_fasta_file )
         elif data_found:
             break
-
-def process_string(input_string):
-    # Remove apostrophes
-    processed_string = input_string.replace("'", "")
-    # Replace white spaces with underscores
-    processed_string = processed_string.replace(" ", "_")
-    # Convert to lowercase
-    processed_string = processed_string.lower()
-
-    return processed_string
-
 
 def index_fasta(root_path_prefix, baseDir):
     # Paths for intermediate and final files
@@ -78,5 +61,7 @@ if __name__ == "__main__":
     else:
         genome_name = sys.argv[1]
         baseDir = sys.argv[2]
-        tr = read_tax_rank(genome_name)
+        tr = mp.read_tax_rank(genome_name)
         query_UniProt(tr, baseDir)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("** endtime UNIPROT: " + str(now))
