@@ -91,7 +91,7 @@ process get_Rfam_accessions {
     path rfam_conf
 
     output:
-    path "${genome_dir}/rfam_*_ids.txt", emit: rfam_ids 
+    path "rfam_*_ids.txt", emit: rfam_ids 
 
     script:
     """

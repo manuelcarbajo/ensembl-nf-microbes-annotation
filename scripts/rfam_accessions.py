@@ -7,8 +7,8 @@ import my_process as mp
 def query_Rfam(tax_ranks, config_file_path, genome_dir):
     # Read MySQL connection parameters from the configuration file
     host, user, password, database, port = mp.read_config(config_file_path)
-    genome_name = tax_ranks["level_0_name"]
-    rfam_ids_path = genome_dir + "/rfam_" + genome_name + "_ids.txt"
+    genome_name = tax_ranks["genome_name"]
+    rfam_ids_path = "rfam_" + genome_name + "_ids.txt"
 
     # Establish a connection to the MySQL database
     try:
@@ -59,7 +59,7 @@ def query_Rfam(tax_ranks, config_file_path, genome_dir):
                         AND species LIKE '%{genome_name}%'
                     """
                         cursor.execute(families_sql_query)
-                        rfam_results = [row[0] for row in cursor]
+                        rfam_results = set(row[0] for row in cursor)
                         print(" loop: " + str(l) + " - has " + str(families_count) + " counts for " + genome_name + " hierarchy: " + str(rank_hierarchy) + " rank: " + rank)
         
         # Write the results to a file
