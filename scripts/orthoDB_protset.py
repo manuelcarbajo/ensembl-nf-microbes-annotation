@@ -16,7 +16,8 @@ def query_OrthoDB(tax_ranks, baseDir):
             g_name = tax_ranks[current_name]
             genome_name = mp.process_string(g_name)
             genome_tax = tax_ranks[current_tax]
-            command = ["python3", baseDir + "/bin/download_data_from_orthoDB.py", str(genome_tax), baseDir]
+            command = ["python3", baseDir + "/bin/download_orthodb_protset.py", str(genome_tax), baseDir]
+            #command = ["python3", baseDir + "/bin/download_data_from_orthoDB.py", str(genome_tax), baseDir]
             try:
                 subprocess.run(command, check=True)
                 print("Command executed successfully for level " + str(l) + " " + genome_name + " " + str(genome_tax))
@@ -37,3 +38,5 @@ if __name__ == "__main__":
         print("       genome_name: " + genome_name )
         tr = mp.read_tax_rank(genome_name)
         query_OrthoDB(tr, baseDir)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("** end ORTHODB " + str(now) )
