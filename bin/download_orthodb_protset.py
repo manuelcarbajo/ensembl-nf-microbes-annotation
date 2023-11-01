@@ -101,21 +101,15 @@ if is_int(TAXID_CLADE):
         # Obtain taxon information from Uniprot
         uniprot_output = f"{CLADE_NAME}.comb.uniprot.tmp"
         with open(uniprot_output, "w") as uniprot_file:
-            #tid_list_str = ",".join(CLADE_TID_LIST)
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print("**** getting uniprots " + str(now))
             
             for tid in CLADE_TID_LIST:
                 response = requests.get(f"https://rest.uniprot.org/taxonomy/{tid}.tsv")
-                print(f"uniprot response 1: https://rest.uniprot.org/taxonomy/{tid}.tsv")
                 if response.status_code == 200:
                     lines = response.text.strip().split('\n')
                     uniprot_file.write(lines[0] + '\n')  # Header
                     for line in lines[1:]:
                         if line[0].isdigit():
                             uniprot_file.write(line + '\n')
-                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print("**---- get uniprots end " + str(now))
 
         with open(f"{CLADE_NAME}.orthodb.uniprot.tsv", "w") as orthodb_uniprot_file:
             with open(uniprot_output, "r") as uniprot_file:
@@ -153,20 +147,15 @@ else:
         # Obtain taxon information from Uniprot
         uniprot_output = f"{CLADE_NAME}.comb.uniprot.tmp"
         with open(uniprot_output, "w") as uniprot_file:
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print("**** getting uniprots " +  str(now))
             
             for tid in CLADE_TID_LIST:
                 response = requests.get(f"https://rest.uniprot.org/taxonomy/{tid}.tsv")
-                print(" uniprot response 2: " + str(response))
                 if response.status_code == 200:
                     lines = response.text.strip().split('\n')
                     uniprot_file.write(lines[0] + '\n')  # Header
                     for line in lines[1:]:
                         if line[0].isdigit():
                             uniprot_file.write(line + '\n')
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print("**---- uniprots end " +  str(now))
         with open(f"{CLADE_NAME}.orthodb.uniprot.tsv", "w") as orthodb_uniprot_file:
             with open(uniprot_output, "r") as uniprot_file:
                 for line in uniprot_file:
@@ -208,8 +197,6 @@ if not CLADE_NAME:
     print(f"## See File: {uniprot_output}")
     sys.exit(1)
 
-now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-print("**** AFTER CHECKING CLADE NAME " +  str(now))
 
 # Report set of taxon IDs to screen
 LOG_CLUSTERS = os.path.join(CWD, f"{CLADE_NAME}_orthodb_download.cluster.log.txt")
@@ -245,9 +232,6 @@ try:
     print(f"Downloaded JSON data from {CLUSTER_IDS_URL} to {JSON_OUTPUT_PATH}")
 except requests.exceptions.RequestException as e:
     print(f"Error downloading JSON data: {str(e)}")
-
-now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-print("**** AFTER DOWNLOADING CLUSTER JSON " +  str(now))
 
 # Set the output file name for combined clusters text file
 LINEAR_CLUSTERS = f"{CLADE_NAME}_orthoDB_clusters.linear.txt"
@@ -294,6 +278,7 @@ if os.path.exists(ORIG_CLUSTERS_COMB):
 with open(LINEAR_CLUSTERS, 'r') as linear_clusters_file:
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print("**** START DOWNLOADING INDIVIDUAL CLUSTERS " +  str(now))
+    clusters_count = 0
     for CLUSTER in linear_clusters_file:
         try:
             CLUSTER = CLUSTER.strip()
@@ -304,14 +289,8 @@ with open(LINEAR_CLUSTERS, 'r') as linear_clusters_file:
             wget_command = ["wget", "-qq", url, "-O", SINGLE_CLUSTER] 
 
             # Log the cluster processing
-            print(f"Processing OrthoDB cluster: {CLUSTER}")
             with open(LOG_CLUSTERS, 'a') as log_clusters_file:
-                print(f"Running --> {wget_command}")
                 log_clusters_file.write(f"Running --> {wget_command}")
-            
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print("----  DOWNLOADING INDIVIDUAL CLUSTER " + CLUSTER + " " +  str(now))
-            
             
             try:
                 # Run wget to download the file and capture stdout and stderr separately
@@ -324,18 +303,19 @@ with open(LINEAR_CLUSTERS, 'r') as linear_clusters_file:
             except subprocess.TimeoutExpired:
                     print("individual clusters wget took too long and was terminated.")
             
-            print("---- ---=-- CLUSTER downloaded")
             # Append the contents of the downloaded cluster to the combined file
             with open(SINGLE_CLUSTER, 'r') as single_cluster_file, open(ORIG_CLUSTERS_COMB, 'a') as combined_clusters_file:
                 combined_clusters_file.write(single_cluster_file.read())
             
-            print("------  CLUSTER DOWNLOADED " +  str(now))
             # Remove the wget script and the downloaded cluster
             #os.remove(wget_script)
             os.remove(SINGLE_CLUSTER)
+            clusters_count += 1
+            
         except Exception as err:
             print("Error downloading " + CLUSTER + " with " + wget_command + ": " + str(err) )
 
+print("Clusters_count: " + str(clusters_count))
 
 now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 print("**** AFTER DOWNLOADING INDIVIDUAL CLUSTERS " +  str(now))
