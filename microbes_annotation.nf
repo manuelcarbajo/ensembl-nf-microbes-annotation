@@ -53,7 +53,6 @@ process get_UniProt_data {
     input:
     path genome_names
     
-
     output:
     path "${genome_names}/*_uniprot_proteins.fa", emit: uniprot_fa
     path "${genome_names}/*_uniprot_proteins.fa.fai", emit: uniprot_fai
@@ -73,8 +72,9 @@ process get_OrthoDB_protset {
     path genome_dir
  
     output:
-    stdout
-
+    path "${genome_dir}/*_proteins.fa", emit: orthodb_fa
+    path "${genome_dir}/*_proteins.fa.fai", emit: orthodb_fai
+    
     script:
     """
     python3 ${baseDir}/scripts/orthoDB_protset.py ${genome_dir} ${baseDir}
@@ -100,18 +100,22 @@ process get_Rfam_accessions {
 }
 
 
-process myNextProcess {
+process get_RNA_seq {
     debug true
-    
+    publishDir "${params.output_path}/genom_anno_dev/${genome_dir}", mode: 'copy'    
+
     input:
-    path rfam_ids
+    path genome_dir
+    
+    output:
+    path "*_rna.csv", emit: rna_csv
+    path "short_read_fastq_dir", emit: short_read_fastq_dir
 
     script:
     """
-    echo "This is a message from myNextprocess receiving ${rfam_ids}"
+    python3 ${baseDir}/scripts/rna_seq.py ${genome_dir} ${baseDir}
     """
 }
-
 
 
 workflow {
@@ -120,11 +124,10 @@ workflow {
     get_UniProt_data( get_NCBI_taxonomy_data.out.genome_names.flatten() )
     
     get_OrthoDB_protset(get_UniProt_data.out.genome_dir)
-
    
     get_Rfam_accessions(get_UniProt_data.out.genome_dir, rfam_conf_ch) 
 
-    myNextProcess(get_Rfam_accessions.out.rfam_ids)
+    get_RNA_seq(get_UniProt_data.out.genome_dir)
 }
 
 
