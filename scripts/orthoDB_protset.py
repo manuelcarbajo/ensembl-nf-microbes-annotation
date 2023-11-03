@@ -17,13 +17,12 @@ def query_OrthoDB(tax_ranks, baseDir):
             genome_name = mp.process_string(g_name)
             genome_tax = tax_ranks[current_tax]
             command = ["python3", baseDir + "/bin/download_orthodb_protset.py", str(genome_tax), baseDir]
-            #command = ["python3", baseDir + "/bin/download_data_from_orthoDB.py", str(genome_tax), baseDir]
             try:
                 subprocess.run(command, check=True)
                 print("Command executed successfully for level " + str(l) + " " + genome_name + " " + str(genome_tax))
                 data_found = True
             except subprocess.CalledProcessError as e:
-                print("Error for level " + str(l) + " executing command '{command}' : {e}")
+                print("Error for level " + str(l) + " executing command '"+ str(command) +"' : " + str(e) +" ")
         elif data_found:
             break
          
