@@ -90,9 +90,11 @@ def execute_mysql_query(config_file_path, species_dict):
                 current_tax = query_level + "_tax"
                 current_name = query_level + "_name"
                 current_rank = query_level + "_rank"
+                current_hierarchy = query_level + "_hierarchy"
                 species_dict[gca][current_tax] = result[0]
                 species_dict[gca][current_name] = result[1]
                 species_dict[gca][current_rank] = result[3]
+                species_dict[gca][current_hierarchy] = mp.ranks_dict[result[3]]
         except mysql.connector.Error as err:
             print(f"connector error executing query: {err}")
         except Exception as err:
