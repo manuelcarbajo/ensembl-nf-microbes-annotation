@@ -24,6 +24,15 @@ def generate_ena_csv(tax_ranks,genome, baseDir):
             with open(log_file_path, 'w') as log_file:
                 try:
                     subprocess.run(command, stdout=log_file, stderr=subprocess.STDOUT, check=True)
+                    data_found = True
+                except subprocess.CalledProcessError as e:
+                    print("generate_ena_csv error for level " + str(l) + " executing command '"+ str(command) +"' : " + str(e) +" ")
+
+            """
+            log_file_path = os.path.join(baseDir, 'rna_script.log')
+            with open(log_file_path, 'w') as log_file:
+                try:
+                    subprocess.run(command, stdout=log_file, stderr=subprocess.STDOUT, check=True)
                     line_count = 0
                     with open(output_rna_csv_path, 'r') as rnafile:
                         for line in rnafile:
@@ -39,7 +48,7 @@ def generate_ena_csv(tax_ranks,genome, baseDir):
                     data_found = True
                 except subprocess.CalledProcessError as e:
                     print("generate_ena_csv error for level " + str(l) + " executing command '"+ str(command) +"' : " + str(e) +" ")
-
+        """
         elif data_found:
             break
          
