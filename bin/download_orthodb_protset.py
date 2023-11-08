@@ -29,9 +29,10 @@ cmd = ["wget", "-q", ORTHODB_FILE_URL, "-O", "OrthoDB_Download.html"]
 try:
     # Run wget to download the file and capture stdout and stderr separately
     completed_process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1)
+    print(str(completed_process))
     # Check for any errors
-    if proc.returncode != 0:
-        print(f"Error occurred. wget stderr:\n{stderr.decode('utf-8')}")
+    if completed_process.returncode != 0:
+        print(f"Error occurred. wget stderr:\n{completed_process.stderr.decode('utf-8')}")
     else:
         print(f"wget stdout:\n{stdout.decode('utf-8')}")
 except subprocess.TimeoutExpired:
