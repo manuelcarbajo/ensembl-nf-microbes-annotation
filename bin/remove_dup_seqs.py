@@ -1,39 +1,40 @@
-import re
 import sys
+import os
+
+input_file = sys.argv[1]
+if len(sys.argv) != 2 or not os.path.exists(input_file):
+    print("Usage: python remove_dup_seqs.py input_file\nPerhaps the input_file was missing")
+    sys.exit(1)
 
 seq_hash = {}
-all_lines = []
-count = 0
 
-with open(sys.argv[1], 'r') as file:
-    for line in file:
+with open(input_file, 'r') as infile:
+    header = None
+    sequence = ""
+
+    for line in infile:
         line = line.strip()
 
-        if re.match(r'>', line):
-            if count + 1 < len(all_lines):  # Check if count is a valid index
-                count += 1
-                all_lines.append(line)
-                count += 1
-            else:
-                all_lines.append(line)
-                count += 1
+        if not line:
+            continue  # Skip empty lines
+
+        if line.startswith('>'):
+            # If a header line is encountered, store the previous sequence
+            if header is not None and sequence:
+                seq_hash[sequence] = header
+
+            # Reset header and start a new sequence
+            header = line
+            sequence = ""
         else:
-            if count < len(all_lines):  # Check if count is a valid index
-                if all_lines[count]:
-                    all_lines[count] += line
-                else:
-                    all_lines[count] = line
-            else:
-                all_lines.append(line)  # Add a new line to the list
+            sequence += line
 
-for i in range(0, len(all_lines), 2):
-    header = all_lines[i]
-    seq = all_lines[i + 1]
-    
-    if len(seq) >= 100:
-        seq_hash[seq] = header
+    # Process the last sequence in the file
+    if header is not None and sequence:
+        seq_hash[sequence] = header
 
-for key, value in seq_hash.items():
-    print(value)
-    print(key)
+# Print unique sequences along with their headers
+for sequence, header in seq_hash.items():
+    print(header)
+    print(sequence)
 
