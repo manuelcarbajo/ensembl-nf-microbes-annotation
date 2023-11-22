@@ -9,20 +9,27 @@ import my_process as mp
 
 def query_OrthoDB(tax_ranks, baseDir):
     data_found = False
-    for l in range(1,4):
+    for l in range(0,4):
         current_name = "level_" + str(l) + "_name"
         current_tax = "level_" + str(l) + "_tax"
-        if tax_ranks[current_name] and not data_found:
+        current_hierarchy = "level_" + str(l) + "_hierarchy"
+        if tax_ranks[current_hierarchy] <= mp.ranks_dict['species'] and not data_found:
             g_name = tax_ranks[current_name]
             genome_name = mp.process_string(g_name)
             genome_tax = tax_ranks[current_tax]
-            command = ["python3", baseDir + "/bin/download_orthodb_protset.py", str(genome_tax), baseDir]
+            try:
+                if tax_ranks['prefered_orthoDB_acc']:
+                    genome_tax = tax_ranks['prefered_orthoDB_acc']
+            except Exception as e:
+                pass
+            #command = ["python3", baseDir + "/bin/download_orthodb_protset.py", str(genome_tax), baseDir]
+            command = ["python3", baseDir + "/bin/download_data_from_orthoDB_Swati.py", str(genome_tax), baseDir]
             try:
                 subprocess.run(command, check=True)
                 print("Command executed successfully for level " + str(l) + " " + genome_name + " " + str(genome_tax))
                 data_found = True
             except subprocess.CalledProcessError as e:
-                print("Error for level " + str(l) + " executing command '"+ str(command) +"' : " + str(e) +" ")
+                print("Error for level " + str(l) + " executing query_OrthoDB command : " + str(e) +" ")
         elif data_found:
             break
          
