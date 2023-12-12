@@ -23,8 +23,7 @@ def query_OrthoDB(tax_ranks, baseDir):
                     genome_tax = tax_ranks['prefered_orthoDB_acc']
             except Exception as e:
                 pass
-            #command = ["python3", baseDir + "/bin/download_orthodb_protset.py", str(genome_tax), baseDir]
-            command = ["python3", baseDir + "/bin/download_data_from_orthoDB_Swati.py", str(genome_tax), baseDir, organism_path]
+            command = ["python3", baseDir + "/bin/download_data_from_orthoDB.py", str(genome_tax), baseDir, organism_path]
             try:
                 subprocess.run(command, check=True)
                 print("Command executed successfully for level " + str(l) + " " + genome_name + " " + str(genome_tax))
