@@ -10,6 +10,8 @@ import numpy as np
 import json
 import multiprocessing
 from functools import partial  
+import my_process as mp
+
 
 def parallize_jobs(jobs,orig_clusters_comb):
     if jobs:
@@ -30,6 +32,9 @@ def get_sequences(orig_clusters_comb, data):
     # Append the contents of the downloaded cluster to the combined file
     with open(outfname, 'r') as single_cluster_file, open(orig_clusters_comb, 'a') as combined_clusters_file:
         combined_clusters_file.write(single_cluster_file.read())
+    #remove the single cluster
+    os.remove(outfname)
+
 
 
 
@@ -37,7 +42,6 @@ def map_retrieve(ncbi_id=None, w_dir=None, orig_clusters_comb=None):
     print("WORKING ON %s" % ncbi_id)
     # command1 = ["curl", "https://data.orthodb.org/current/search?level=%s&species=%s&limit=10000000"%(ncbi_id, ncbi_id)] # by default only 1000 ids can be downloaded, limit=10000000 is set to overcome it.
     command1 = ["curl", "https://data.orthodb.org/current/search?universal=0.9&singlecopy=0.9&level=%s&species=%s&take=5000"%(ncbi_id, ncbi_id)]
-    print(str(command1))
     response = subprocess.Popen(command1, stdout=subprocess.PIPE) # pipe the terminal output to response
     out, err = response.communicate(timeout=5) # Wait for process to terminate
     p_status = response.wait() # Wait for child process to terminate. Additional wait time, just in case there is a lag.
@@ -57,22 +61,25 @@ if __name__ == "__main__":
     else:
         ncbi_id = sys.argv[1]
         baseDir = sys.argv[2]
+        genome_name = sys.argv[3]
         print("ncbi id: " + str(ncbi_id) )
         current_dir = os.getcwd()
         CPU = 91 # no of simultaneous runs.
 
         
-        out_dir_name="ncbi_id_%s_sequences"%ncbi_id
+        out_dir_name = genome_name + "/ncbi_id_" + ncbi_id + "_sequences"
+
         d_dir = os.path.join(current_dir, out_dir_name)
 
         if not os.path.exists(d_dir):
-            os.mkdir(d_dir)
+            print(d_dir + " doesnt exist, about to create it")
+            os.makedirs(d_dir, exist_ok=True)
         else:
             pass
 
         os.chdir(d_dir)
 
-        orig_clusters_comb = os.path.join(d_dir, f"Combined_OrthoDB.orig.fa")
+        orig_clusters_comb = os.path.join(d_dir, "Combined_OrthoDB.orig.fa")
         single_cluster = map_retrieve(ncbi_id=ncbi_id, w_dir=d_dir, orig_clusters_comb=orig_clusters_comb)
        
         if not os.path.exists(orig_clusters_comb):
@@ -85,7 +92,7 @@ if __name__ == "__main__":
         # Define file paths
         dedup_out_temp = f"{d_dir}/Combined_OrthoDB_{ncbi_id}_no_dups.tmp"
         final_ortho_fasta = f"{d_dir}/Combined_OrthoDB_{ncbi_id}_final.out.fa"
-        reheader_out = f"{d_dir}/Combined_OrthoDB_{ncbi_id}_Reheader.fa.tmp"
+        reheader_out = f"{d_dir}/Combined_OrthoDB_{ncbi_id}_reheaded.fa.tmp"
 
         if os.path.exists(dedup_out_temp):
             os.remove(dedup_out_temp)
@@ -95,34 +102,42 @@ if __name__ == "__main__":
 
         # Remove duplicate sequences from the original cluster file
         print(f"Removing duplicate sequences from {orig_clusters_comb}")
-        dedup_command = f"python {baseDir}/bin/remove_dup_seqs.py {orig_clusters_comb}"
+        #dedup_command = f"python {baseDir}/bin/remove_dup_seqs.py {orig_clusters_comb}"
         #dedup_command = f"python {baseDir}/bin/remove_dup_seqs.py {orig_clusters_comb} > {dedup_out_temp}"
-
+        try:
+            mp.remove_dup_seqs(orig_clusters_comb, dedup_out_temp)
+            print(f"Remove duplicates successful. Output saved to {dedup_out_temp}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error: Failed to remove duplicates.")
+        
+        """
         with open(dedup_out_temp, 'w') as outfile:
             try:
                 subprocess.run(dedup_command, shell=True, check=True, stdout=outfile)
                 print(f"Remove duplicates successful. Output saved to {dedup_out_temp}")
             except subprocess.CalledProcessError as e:
                 print(f"Error: Failed to remove duplicates.")
-                print(f"Command: {e.cmd}")
-                print(f"Exit code: {e.returncode}")
-                print(f"Output: {e.output.decode() if e.output else 'No output'}")
+                #print(f"Command: {e.cmd}")
+                #print(f"Exit code: {e.returncode}")
+                #print(f"Output: {e.output.decode() if e.output else 'No output'}")
+        """
 
         # Process deduplicated sequences to create a reheadered OrthoDB fasta file
         print("Processing deduplicated seq headers, isolating to unique OrthoDB gene ID...")
-        reheader_command = f"python {baseDir}/bin/reheader_orthodb.py {dedup_out_temp} {final_ortho_fasta}"
-
-        print(f"Command: {reheader_command}\n")
+        
+        #reheader_command = f"python {baseDir}/bin/reheader_orthodb.py {dedup_out_temp} {final_ortho_fasta}"
+        #print(f"Command: {reheader_command}\n")
 
         try:
-            subprocess.run(reheader_command, shell=True)
+            #subprocess.run(reheader_command, shell=True)
+            mp.rehead_fasta(dedup_out_temp,final_ortho_fasta)
             print(f"Reheading successful. Output saved to {final_ortho_fasta}")
         except subprocess.CalledProcessError as e:
             print(f"Error: Failed to rehead.")
-            print(f"Command: {e.cmd}")
-            print(f"Exit code: {e.returncode}")
-            print(f"Output: {e.output.decode() if e.output else 'No output'}")
-
+            #print(f"Command: {e.cmd}")
+            #print(f"Exit code: {e.returncode}")
+            #print(f"Output: {e.output.decode() if e.output else 'No output'}")
+        
         # Create a samtools index file
         print(f"Creating samtools index of {final_ortho_fasta}")
         samtools_command = f"samtools faidx {final_ortho_fasta}"
@@ -131,12 +146,12 @@ if __name__ == "__main__":
             print(f"Samtools index creation successful for {final_ortho_fasta}")
         except subprocess.CalledProcessError as e:
             print(f"Error: Failed to create Samtools index for {final_ortho_fasta}")
-            print(f"Command: {e.cmd}")
-            print(f"Exit code: {e.returncode}")
-            print(f"Output: {e.output.decode() if e.output else 'No output'}")
+            #print(f"Command: {e.cmd}")
+            #print(f"Exit code: {e.returncode}")
+            #print(f"Output: {e.output.decode() if e.output else 'No output'}")
 
         # Clean up temporary files
-        print(f"Cleaning up temporary files in {d_dir}")
         for filename in os.listdir(d_dir):
             if filename.endswith(".tmp"):
                 os.remove(os.path.join(d_dir, filename))
+        os.remove(orig_clusters_comb)
