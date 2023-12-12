@@ -6,16 +6,18 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 from datetime import datetime
 import my_process as mp
+import shutil
 
-def read_csv_file(csv_file, output_path, ncbi_config):
+def read_csv_file(csv_file, output_path, ncbi_config, baseDir):
     IND_ORG_NAME = 0
     IND_TAX = 1
     IND_GCA = 2
     IND_GENOM_NAME = 3
+    IND_ORTHODB_ACC = 4
 
     genome_paths = []
     current_directory = os.getcwd()
-    folderName = os.getcwd() + '/genom_anno_dev'
+    folderName = os.getcwd() + "/genome_anno/"
     try:
         with open(csv_file, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter='\t')
@@ -30,7 +32,13 @@ def read_csv_file(csv_file, output_path, ncbi_config):
                             "level_0_name": level_0_name,
                             "level_0_tax": level_0_tax,
                             "genome_name": genome_name,
+                            "genome_accession": gca,
                             }
+                    try:
+                        if row[IND_ORTHODB_ACC]:
+                            species_dict[gca]["prefered_orthoDB_acc"] = row[IND_ORTHODB_ACC]
+                    except Exception as e:
+                        pass
             species_dict = execute_mysql_query(ncbi_config, species_dict)
             
             if not os.path.exists(folderName):
@@ -44,7 +52,20 @@ def read_csv_file(csv_file, output_path, ncbi_config):
     try:
         for gca in species_dict:
             genome_name = species_dict[gca]['genome_name']
-            tax_rank_file = folderName + '/' +  genome_name + "/tax_ranks.txt"
+            
+            log_dir = os.path.join(baseDir, 'logs', genome_name)
+
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+                print("Created a new logs directory for " + genome_name + " in " + log_dir)
+            else:
+                # Reset the logs directory for that genome
+                shutil.rmtree(log_dir)
+                os.makedirs(log_dir)
+                print("Reset the logs directory for " + genome_name + " in " + log_dir)
+
+
+            tax_rank_file = folderName + genome_name + "/tax_ranks.txt"
             os.makedirs(os.path.dirname(tax_rank_file), exist_ok=True)
             try:
                 with open(tax_rank_file, "w") as output_file:
@@ -81,7 +102,7 @@ def execute_mysql_query(config_file_path, species_dict):
     for gca in species_dict:
         try:
             query_tax = species_dict[gca]["level_0_tax"]
-            for query_level in ["level_0","level_1","level_2","level_3"]:
+            for query_level in ["level_0","level_1","level_2","level_3","level_4","level_5", "level_6"]:
                 query = "SELECT nm.taxon_id, nm.name, parent_id, nd.rank from ncbi_taxa_name nm join ncbi_taxa_node nd using(taxon_id) where name_class='scientific name' and taxon_id=" + str(query_tax) + ";" 
                 cursor = connection.cursor()
                 cursor.execute(query)
@@ -98,7 +119,7 @@ def execute_mysql_query(config_file_path, species_dict):
         except mysql.connector.Error as err:
             print(f"connector error executing query: {err}")
         except Exception as err:
-            print(f"GEneric error executing query: {err}")
+            print(f"Generic error executing query: {err}")
     
     # Close the cursor and connection
     if 'cursor' in locals() and cursor is not None:
@@ -108,12 +129,16 @@ def execute_mysql_query(config_file_path, species_dict):
     return species_dict
 
 if __name__ == "__main__":
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("** starttime NCBI: " + str(now))
+    
     if len(sys.argv) < 3:
         print("Please provide the csv file path, the ncbi config file and the output_path as arguments.")
     else:
         csv_file = sys.argv[1]
         output_path = sys.argv[2]
         ncbi_config = sys.argv[3]
-        read_csv_file(csv_file, output_path, ncbi_config)
+        baseDir = sys.argv[4]
+        read_csv_file(csv_file, output_path, ncbi_config, baseDir)
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print("** endtime NCBI: " + str(now))
