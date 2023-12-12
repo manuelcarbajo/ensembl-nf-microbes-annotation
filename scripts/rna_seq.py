@@ -7,7 +7,7 @@ from datetime import datetime
 import my_process as mp
 
 
-def generate_ena_csv(tax_ranks,genome, baseDir):
+def generate_ena_csv(tax_ranks,genome, baseDir, genome_dir):
     data_found = False
     for l in range(0,4):
         current_name = "level_" + str(l) + "_name"
@@ -18,9 +18,12 @@ def generate_ena_csv(tax_ranks,genome, baseDir):
             g_name = tax_ranks[current_name]
             genome_name = mp.process_string(g_name)
             genome_tax = tax_ranks[current_tax]
-            output_rna_csv_path = genome + "_" + str(genome_tax) + "_rna.csv"
+            output_rna_csv_path = genome_dir + "/" + genome + "_" + str(genome_tax) + "_rna.csv"
             command = ["perl", baseDir + "/frameworks/ensembl-hive/scripts/standaloneJob.pl", "Bio::EnsEMBL::Analysis::Hive::RunnableDB::HiveDownloadCsvENA", "-taxon_id", str(genome_tax),"-inputfile", output_rna_csv_path]
-            log_file_path = os.path.join(baseDir, 'rna_script.log')
+            log_dir = os.path.join(baseDir, 'logs', genome)
+            log_file_path = log_dir + '/rna_script.log'
+            
+            
             with open(log_file_path, 'w') as log_file:
                 try:
                     subprocess.run(command, stdout=log_file, stderr=subprocess.STDOUT, check=True)
@@ -55,13 +58,14 @@ def generate_ena_csv(tax_ranks,genome, baseDir):
 if __name__ == "__main__":
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print("*** begin RNA-seq " + str(now) )
-    if len(sys.argv) < 1:
-        print("The path to the genome is missing as an argument.")
+    if len(sys.argv) < 3:
+        print("The genome, its path or the baseDir is/are missing as an argument.")
     else:
         genome_name = sys.argv[1]
         baseDir = sys.argv[2]
+        genome_dir = sys.argv[3]
         print("       genome_name: " + genome_name )
         tr = mp.read_tax_rank(genome_name)
-        generate_ena_csv(tr, genome_name, baseDir)
+        generate_ena_csv(tr, genome_name, baseDir, genome_dir)
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print("*** end RNA-seq " + str(now) )
