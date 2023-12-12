@@ -25,13 +25,15 @@ module load nextflow-22.10.1-gcc-11.2.0-ju5saqw
 
 After downloading the ensembl-nf-microbes-annotation define your WORK_DIR (path to ensembl-nf-microbes-annotation git repo), ENSEMBL_ROOT_DIR (path to your other ensemb git repositories) and diamond_path (the path to the copy of uniprot_euk.fa.dmnd database)
 
-Place a tab separated list of genomes to annotate in "$WORK_DIR/data/genomes_list.csv" (following the template "$WORK_DIR/data/genomes_list_template.csv")
-  /#GENOME_NAME	TAX_ID	ENA_ACCESSION
-  /#Place here a tab separated list of genomes to process. 
-  /#Rename the file "genomes_list.csv"
-  /#Example:
-  /#toxoplasma_gondii_ME49	508771	GCA_000006565.2
-  /#tripanosoma_cruzi	5693	GCA_003719455.1
+Place a tab separated list of genomes to annotate in "$WORK_DIR/data/genomes_list.csv" (following the template in "$WORK_DIR/data/genomes_list_template.csv")
+  //GENOME_NAME	TAX_ID	ENA_ACCESSION
+  //Place here a tab separated list of genomes to process. 
+  //Rename the file "genomes_list.csv"
+  //Example:
+  //toxoplasma_gondii_ME49	508771	GCA_000006565.2
+  //tripanosoma_cruzi	5693	GCA_003719455.1
 
 Run the nextflow pipeline with the command:
+```
 nextflow run microbes_annotation.nf  --output_path "path_to_your_output_publishDir"
+```
