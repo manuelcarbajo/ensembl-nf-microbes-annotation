@@ -1,5 +1,8 @@
 import ast
 from urllib.parse import urlparse, parse_qs
+import re
+import sys
+import os
 
 ranks_dict = {
     'superkingdom': 1, 'kingdom': 2, 'subkingdom': 3, 'superphylum': 4, 'phylum': 5, 
@@ -49,3 +52,61 @@ def process_string(input_string):
     processed_string = processed_string.lower()
 
     return processed_string
+
+
+def rehead_fasta(in_fasta,out_fasta):
+    
+    matching_regex = r'[^a-zA-Z0-9_.:,\-()]'
+    #matching_regex = r'[^a-zA-Z0-9_.]' original regex for orthoDB fasta files (but the above should be more general)
+
+    with open(in_fasta, 'r') as infile, open(out_fasta, 'w') as outfile:
+        ct =0
+        for line in infile:
+            line = line.strip()
+            if line:
+                ct += 1
+                match_obj = re.search(r'^>([^\s]+)', line)
+                if match_obj:
+                    header =  match_obj.group(0)
+                    header = header.split('>')[1] 
+                    cleaned_header = '>' + re.sub(r'[^a-zA-Z0-9_.:,\-()]', '_', header)
+                    outfile.write(f"{cleaned_header}\n")
+                    #print("MATCH: " + str(ct) + " " + cleaned_header)
+                elif line.strip():
+                    outfile.write(line + "\n")
+                    #print("NO MATCH: " + str(ct) + " " + line )
+
+def remove_dup_seqs(input_file, output_file):
+
+    seq_hash = {}
+
+    with open(input_file, 'r') as infile:
+        header = None
+        sequence = ""
+
+        for line in infile:
+            line = line.strip()
+
+            if not line:
+                continue  # Skip empty lines
+
+            if line.startswith('>'):
+                # If a header line is encountered, store the previous sequence
+                if header is not None and sequence:
+                    seq_hash[sequence] = header
+
+                # Reset header and start a new sequence
+                header = line
+                sequence = ""
+            else:
+                sequence += line
+
+        # Process the last sequence in the file
+        if header is not None and sequence:
+            seq_hash[sequence] = header
+    
+    with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
+        # Print unique sequences along with their headers
+        for sequence, header in seq_hash.items():
+            outfile.write(f"{header}\n")
+            outfile.write(f"{sequence}\n")
