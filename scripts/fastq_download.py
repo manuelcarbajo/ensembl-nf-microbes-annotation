@@ -10,9 +10,16 @@ import time
 
 def download_fastq(fastq_file, genome_dir, baseDir):
     log_file_path = os.path.join(baseDir, 'rna_script.log')
+    
+    fastq_dir_path = os.path.join(genome_dir, "short_read_fastq_dir")
+    if not os.path.exists(fastq_dir_path):
+        os.makedirs(fastq_dir_path)
+    else:
+       pass
+
     with open(log_file_path, 'w') as log_file:
         try:
-            download_fastq_command = ["perl", baseDir + "/frameworks/ensembl-hive/scripts/standaloneJob.pl","Bio::EnsEMBL::Analysis::Hive::RunnableDB::HiveDownloadRNASeqFastqs","-ftp_base_url","ftp://ftp.sra.ebi.ac.uk/vol1/fastq/","-input_dir","." , "-iid",fastq_file]
+            download_fastq_command = ["perl", baseDir + "/frameworks/ensembl-hive/scripts/standaloneJob.pl","Bio::EnsEMBL::Analysis::Hive::RunnableDB::HiveDownloadRNASeqFastqs","-ftp_base_url","ftp://ftp.sra.ebi.ac.uk/vol1/fastq/","-input_dir", fastq_dir_path , "-iid",fastq_file]
             subprocess.run(download_fastq_command, stdout=log_file, stderr=subprocess.STDOUT, check=True)
             
         except subprocess.CalledProcessError as e:
@@ -26,7 +33,6 @@ if __name__ == "__main__":
         # Generate a random wait time between 0 and 15 seconds to avoid spaming ENA
         wait_time = random.randint(1, 1500) / 100.0
         time.sleep(wait_time)
-        
         genome_dir = sys.argv[1]
         fastq_file = sys.argv[2]
         baseDir = sys.argv[3]
@@ -35,4 +41,6 @@ if __name__ == "__main__":
         download_fastq( fastq_file, genome_dir, baseDir)
         now2 = datetime.now()
         lap = now2 - now1
-        print(fastq_file + " downloaded. Elapsed time: " + str(lap) )
+        
+        print("---  " + fastq_file + " download processed. Elapsed time: " + str(lap) )
+      
