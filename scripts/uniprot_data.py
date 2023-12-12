@@ -19,12 +19,19 @@ def query_UniProt(tax_ranks, baseDir):
             genome_tax = tax_ranks[current_tax]
             root_path_prefix = tax_ranks['genome_name'] + "/" + genome_name
             uniprot_fasta_file = root_path_prefix + "_uniprot.fa"
+            
             url = "https://rest.uniprot.org/uniprotkb/stream?compressed=false&format=fasta&query=%28%28taxonomy_id%3A" + str(genome_tax) + "%29+AND+%28%28existence%3A1%29+OR+%28existence%3A2%29%29%29"
             try:
                 response = requests.get(url)
                 
                 if response.status_code == 200:
                     print("SUCCESS at level " + str(l) + ": " + uniprot_fasta_file)
+            
+                    if os.path.exists(root_path_prefix + "_uniprot_proteins.fa"):
+                        os.remove(root_path_prefix + "_uniprot_proteins.fa")
+                    if os.path.exists(root_path_prefix + "_uniprot_proteins.fai"):
+                        os.remove(root_path_prefix + "_uniprot_proteins.fai") 
+                    
                     with open(uniprot_fasta_file,"w") as gf:
                         gf.write(response.text)
                     data_found = True
@@ -37,16 +44,16 @@ def query_UniProt(tax_ranks, baseDir):
 def index_fasta(root_path_prefix, baseDir):
     # Paths for intermediate and final files
     fasta_file = root_path_prefix + "_uniprot.fa"
-    reheadered_fasta = root_path_prefix + "_reheadered.fasta"
-    deduped_fasta = root_path_prefix + "_deduped.fasta"
+    reheaded_fasta = root_path_prefix + "_reheaded_uniprot.fasta"
+    deduped_fasta = root_path_prefix + "_deduped_uniprot.fasta"
     output_fasta = root_path_prefix + "_uniprot_proteins.fa"
 
     # Reheader the FASTA file using the Perl script
-    reheader_command = f"perl {baseDir}/bin/reheader_uniprot_seqs.pl {fasta_file} > {reheadered_fasta}"
+    reheader_command = f"perl {baseDir}/bin/reheader_uniprot_seqs.pl {fasta_file} > {reheaded_fasta}"
     subprocess.run(reheader_command, shell=True, check=True)
 
     # Remove duplicate sequences using the Perl script
-    dedup_command = f"perl {baseDir}/bin/remove_dup_seqs.pl {reheadered_fasta} > {output_fasta}"
+    dedup_command = f"perl {baseDir}/bin/remove_dup_seqs.pl {reheaded_fasta} > {output_fasta}"
     subprocess.run(dedup_command, shell=True, check=True)
 
     # Index the final output using samtools
