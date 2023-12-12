@@ -36,12 +36,14 @@ Place a tab separated list of genomes to annotate in "$WORK_DIR/data/genomes_lis
 
 Make sure to rename the file "genomes_list.csv"  
 
-run the setup.sh script
+#### Run the setup.sh script
+Execute:
 ```
 source setup.sh
 ```
 
-Run the nextflow pipeline with the command:
+#### Run the nextflow pipeline 
+Use the command:
 ```
 nextflow run microbes_annotation.nf  --output_path "path_to_your_output_publishDir"
 ```
